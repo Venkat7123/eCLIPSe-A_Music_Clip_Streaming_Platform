@@ -157,7 +157,7 @@ const TrimEditor = () => {
     if (track?.audioFile && track.audioFile.startsWith('http')) {
       audioSynth.playAudioFile(track.audioFile, offset, s, e);
     } else if (track?.audioFile) {
-      const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || 'http://localhost:5000/api';
+      const BACKEND_URL = (import.meta.env.VITE_API_URL || 'http://localhost:5000') + '/api';
       const streamUrl = `${BACKEND_URL.replace('/api', '')}/api/stream/${track.id}`;
       audioSynth.playFromStream(streamUrl, null, offset, s, e);
     } else if (track) {
