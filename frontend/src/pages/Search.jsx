@@ -236,7 +236,9 @@ const Search = () => {
                   <th className="py-4 px-4">Artist</th>
                   <th className="py-4 px-4">Album</th>
                   <th className="py-4 px-4 w-20 text-center">Duration</th>
-                  <th className="py-4 px-5 w-24 text-right">Actions</th>
+                  <th className="py-4 px-5 w-24 text-right">
+                    <div className="flex justify-end">Actions</div>
+                  </th>
                 </tr>
               </thead>
               <tbody>
@@ -445,13 +447,13 @@ const Search = () => {
 
                           <button
                             onClick={() => handleSongPlay(track)}
-                            className="p-1.5 rounded-full bg-brand-primary text-black hover:bg-brand-primary-hover shadow transition hover:scale-105 active:scale-95"
+                            className="w-6 h-6 flex items-center justify-center rounded-full bg-brand-primary text-black hover:bg-brand-primary-hover shadow transition hover:scale-105 active:scale-95"
                             title="Play"
                           >
                             {isCurrentPlaying ? (
                               <Pause className="w-3 h-3 fill-black text-black" />
                             ) : (
-                              <Play className="w-3 h-3 fill-black text-black translate-x-0.5" />
+                              <Play className="w-3 h-3 fill-black text-black" />
                             )}
                           </button>
                         </div>

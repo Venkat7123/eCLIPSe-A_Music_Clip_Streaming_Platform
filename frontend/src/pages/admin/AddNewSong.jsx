@@ -296,9 +296,6 @@ const AddNewSong = ({
         </div>
 
         <div className="flex items-center gap-3 font-outfit">
-          <button className="p-2.5 rounded-full bg-[#131520] hover:bg-white/5 border border-white/5 text-zinc-400 hover:text-white transition">
-            <Bell className="w-4 h-4" />
-          </button>
           <button
             onClick={onBackClick}
             className="bg-brand-primary hover:bg-purple-400 text-black text-xs font-semibold px-4 py-2.5 rounded-xl flex items-center gap-2 transition cursor-pointer font-outfit"
@@ -487,7 +484,7 @@ const AddNewSong = ({
                 {isPreviewPlaying ? (
                   <Pause className="w-4.5 h-4.5 text-black fill-black" />
                 ) : (
-                  <Play className="w-4.5 h-4.5 text-black fill-black translate-x-0.5" />
+                  <Play className="w-4.5 h-4.5 text-black fill-black" />
                 )}
               </button>
 

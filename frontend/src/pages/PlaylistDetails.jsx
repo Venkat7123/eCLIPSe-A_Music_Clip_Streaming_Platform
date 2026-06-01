@@ -121,6 +121,7 @@ const PlaylistDetails = () => {
   // Find latest state of this playlist
   const playlist = playlists.find(p => p.id === screenData?.id) || screenData;
   const isPlaylistDownloading = (playlist.entries || []).some(entry => downloadingTrackIds.has(entry.trackId));
+  const isPlaylistDownloaded = (playlist.entries || []).length > 0 && (playlist.entries || []).every(entry => downloadedTrackIds.has(entry.trackId));
 
   const [isEditingName, setIsEditingName] = useState(false);
   const [playlistName, setPlaylistName] = useState('');
@@ -550,6 +551,7 @@ const PlaylistDetails = () => {
                 </button>
                 <button
                   onClick={async () => {
+                    if (isPlaylistDownloaded) return;
                     const trackIds = [...new Set((playlist.entries || []).map(e => e.trackId))];
                     if (trackIds.length === 0) {
                       toast.warning('This playlist is empty.');
@@ -557,10 +559,11 @@ const PlaylistDetails = () => {
                     }
                     toast.info('Downloading playlist tracks...');
                     let downloaded = 0;
+                    const playlistMeta = { id: playlist.id, name: playlist.name };
                     for (const tid of trackIds) {
                       if (!downloadedTrackIds.has(tid)) {
                         try {
-                          await downloadTrack(tid);
+                          await downloadTrack(tid, playlistMeta);
                           downloaded++;
                         } catch {}
                       }
@@ -571,19 +574,23 @@ const PlaylistDetails = () => {
                       toast.info('All tracks in this playlist are already downloaded.');
                     }
                   }}
-                  disabled={isPlaylistDownloading}
+                  disabled={isPlaylistDownloading || isPlaylistDownloaded}
                   className={`flex items-center gap-2 px-5 py-2.5 rounded-xl border text-xs font-medium transition hover:scale-105 active:scale-95 cursor-pointer font-outfit ${
                     isPlaylistDownloading
                       ? 'bg-purple-500/10 border-purple-500/30 text-purple-400/60 cursor-wait'
-                      : 'bg-white/5 hover:bg-white/10 text-white border-white/5'
+                      : isPlaylistDownloaded
+                        ? 'bg-green-500/10 border-green-500/30 text-green-400 cursor-default'
+                        : 'bg-white/5 hover:bg-white/10 text-white border-white/5'
                   }`}
                 >
                   {isPlaylistDownloading ? (
                     <Loader2 className="w-4 h-4 animate-spin text-brand-primary" />
+                  ) : isPlaylistDownloaded ? (
+                    <CheckCircle2 className="w-4 h-4 text-green-400" />
                   ) : (
                     <Download className="w-4 h-4" />
                   )}
-                  <span>{isPlaylistDownloading ? 'Downloading...' : 'Download'}</span>
+                  <span>{isPlaylistDownloading ? 'Downloading...' : isPlaylistDownloaded ? 'Downloaded' : 'Download'}</span>
                 </button>
 
               </div>
@@ -638,6 +645,7 @@ const PlaylistDetails = () => {
 
                         <button
                           onClick={async () => {
+                            if (isPlaylistDownloaded) return;
                             setShowPlaylistMenu(false);
                             const trackIds = [...new Set((playlist.entries || []).map(entry => entry.trackId))];
                             if (trackIds.length === 0) {
@@ -661,17 +669,19 @@ const PlaylistDetails = () => {
                               toast.info('All tracks in this playlist are already downloaded.');
                             }
                           }}
-                          disabled={isPlaylistDownloading}
+                          disabled={isPlaylistDownloading || isPlaylistDownloaded}
                           className={`w-full px-3 py-2 text-xs flex items-center gap-2.5 transition cursor-pointer ${
-                            isPlaylistDownloading ? 'text-zinc-500 cursor-wait' : 'text-zinc-300 hover:text-white hover:bg-white/5'
+                            isPlaylistDownloading ? 'text-zinc-500 cursor-wait' : isPlaylistDownloaded ? 'text-green-400 cursor-default' : 'text-zinc-300 hover:text-white hover:bg-white/5'
                           }`}
                         >
                           {isPlaylistDownloading ? (
                             <Loader2 className="w-3.5 h-3.5 text-brand-primary animate-spin shrink-0" />
+                          ) : isPlaylistDownloaded ? (
+                            <CheckCircle2 className="w-3.5 h-3.5 text-green-400 shrink-0" />
                           ) : (
                             <Download className="w-3.5 h-3.5 text-zinc-400 shrink-0" />
                           )}
-                          <span>{isPlaylistDownloading ? 'Downloading...' : 'Download Playlist'}</span>
+                          <span>{isPlaylistDownloading ? 'Downloading...' : isPlaylistDownloaded ? 'Downloaded' : 'Download Playlist'}</span>
                         </button>
 
                         <div className="border-t border-white/5 my-1" />
@@ -750,7 +760,9 @@ const PlaylistDetails = () => {
                     <th className="py-4 px-4 font-medium">Artist</th>
                     <th className="py-4 px-4 font-medium">Clip</th>
                     <th className="py-4 px-4 w-24 text-left font-medium">Duration</th>
-                    <th className="py-4 px-5 w-32 text-right font-medium">Actions</th>
+                    <th className="py-4 px-4 w-32 text-right font-medium">
+                      <div className="flex justify-end">Actions</div>
+                    </th>
                   </tr>
                 </thead>
                 <tbody>
@@ -846,13 +858,13 @@ const PlaylistDetails = () => {
                                 const idx = (playlist.entries || []).findIndex(e => e.entryId === entry.entryId);
                                 playPlaylist(playlist.entries, idx, false);
                               }}
-                              className="p-1.5 rounded-full bg-brand-primary text-black hover:bg-brand-primary-hover shadow transition hover:scale-105 active:scale-95 cursor-pointer"
+                              className="w-6 h-6 flex items-center justify-center rounded-full bg-brand-primary text-black hover:bg-brand-primary-hover shadow transition hover:scale-105 active:scale-95 cursor-pointer"
                               title="Play from here"
                             >
                               {isCurrentPlaying ? (
                                 <Pause className="w-3 h-3 fill-black text-black" />
                               ) : (
-                                <Play className="w-3 h-3 fill-black text-black translate-x-0.5" />
+                                <Play className="w-3 h-3 fill-black text-black" />
                               )}
                             </button>
 

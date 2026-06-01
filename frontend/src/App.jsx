@@ -26,12 +26,24 @@ import {
   SkipForward,
   ShieldCheck,
   Download,
-  CheckCircle2
+  CheckCircle2,
+  ShieldOff
 } from 'lucide-react';
+
+function AccessDenied() {
+  return (
+    <div className="flex-1 flex flex-col items-center justify-center gap-4 text-center px-6">
+      <ShieldOff className="w-16 h-16 text-red-500/60" />
+      <h1 className="text-2xl font-bold text-white">Access Denied</h1>
+      <p className="text-zinc-400 text-sm max-w-xs">You don't have permission to view this page. Admin access is required.</p>
+    </div>
+  );
+}
 
 function App() {
   const {
     authProfile,
+    isAuthChecked,
     loginWithEntraSimulated,
     activeScreen,
     screenData,
@@ -81,11 +93,13 @@ function App() {
       case 'downloads':
         return <Downloads />;
       case 'admin':
+        if (role !== 'ADMIN') return <AccessDenied />;
         return <AdminPanel />;
       case 'admin-manage-songs':
+        if (role !== 'ADMIN') return <AccessDenied />;
         return (
           <div className="flex-1 overflow-y-auto px-6 md:px-12 py-8 pb-24">
-            <ManageSongs 
+            <ManageSongs
               tracks={tracks}
               playlists={playlists}
               onAddSongClick={() => navigate('admin-add-song')}
@@ -95,9 +109,10 @@ function App() {
           </div>
         );
       case 'admin-add-song':
+        if (role !== 'ADMIN') return <AccessDenied />;
         return (
           <div className="flex-1 overflow-y-auto px-6 md:px-12 py-8 pb-24">
-            <AddNewSong 
+            <AddNewSong
               tracks={tracks}
               onBackClick={() => navigate('admin-manage-songs')}
               onSongAdded={addSongToLibrary}
@@ -105,6 +120,7 @@ function App() {
           </div>
         );
       case 'admin-users':
+        if (role !== 'ADMIN') return <AccessDenied />;
         return (
           <div className="flex-1 overflow-y-auto px-6 md:px-12 py-8 pb-24">
             <ManageUsers
@@ -120,7 +136,18 @@ function App() {
     }
   };
 
-  // Authentication Guard
+  // Authentication Guard — show loading until auth state is determined
+  if (!isAuthChecked) {
+    return (
+      <div className="h-screen w-screen flex items-center justify-center bg-bg-base">
+        <div className="flex flex-col items-center gap-4">
+          <div className="w-8 h-8 border-2 border-brand-primary border-t-transparent rounded-full animate-spin" />
+          <span className="text-zinc-400 text-sm font-outfit">Loading...</span>
+        </div>
+      </div>
+    );
+  }
+
   if (!authProfile) {
     return <Login onSimulateLogin={loginWithEntraSimulated} />;
   }

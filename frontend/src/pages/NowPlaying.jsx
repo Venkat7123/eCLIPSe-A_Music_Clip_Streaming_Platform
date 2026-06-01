@@ -393,7 +393,7 @@ const NowPlaying = () => {
             {isPlaying ? (
               <Pause className="w-6 h-6 fill-current" />
             ) : (
-              <Play className="w-6 h-6 fill-current translate-x-0.5" />
+              <Play className="w-6 h-6 fill-current" />
             )}
           </button>
 
@@ -770,7 +770,7 @@ const NowPlaying = () => {
             >
               {isPlaying
                 ? <Pause className="w-6 h-6 fill-current" />
-                : <Play className="w-6 h-6 fill-current translate-x-0.5" />
+                : <Play className="w-6 h-6 fill-current" />
               }
             </button>
 

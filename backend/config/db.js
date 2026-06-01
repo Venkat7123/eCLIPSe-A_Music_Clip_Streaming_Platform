@@ -8,7 +8,6 @@ export async function connectDB() {
     console.log(`[DB] MongoDB connected: ${MONGODB_URI}`);
   } catch (err) {
     console.error('[DB] MongoDB connection failed:', err.message);
-    process.exit(1);
   }
 
   mongoose.connection.on('error', (err) => {

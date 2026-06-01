@@ -159,7 +159,7 @@ const Player = () => {
             {isPlaying ? (
               <Pause className="w-4 h-4 fill-black text-black" />
             ) : (
-              <Play className="w-4 h-4 fill-black text-black translate-x-0.5" />
+              <Play className="w-4 h-4 fill-black text-black" />
             )}
           </button>
 

@@ -117,7 +117,9 @@ const AddSongChoose = () => {
                 <th className="py-3 px-4">Artist</th>
                 <th className="py-3 px-4">Album</th>
                 <th className="py-3 px-4 w-20 text-center">Duration</th>
-                <th className="py-3 px-5 w-28 text-right">Actions</th>
+                <th className="py-3 px-5 w-28 text-right">
+                  <div className="flex justify-end">Actions</div>
+                </th>
               </tr>
             </thead>
             <tbody>
@@ -174,7 +176,9 @@ const AddSongChoose = () => {
                 <th className="py-3 px-4 w-20 text-center">Start</th>
                 <th className="py-3 px-4 w-20 text-center">End</th>
                 <th className="py-3 px-4 w-20 text-center">Duration</th>
-                <th className="py-3 px-5 w-28 text-right">Actions</th>
+                <th className="py-3 px-5 w-28 text-right">
+                  <div className="flex justify-end">Actions</div>
+                </th>
               </tr>
             </thead>
             <tbody>

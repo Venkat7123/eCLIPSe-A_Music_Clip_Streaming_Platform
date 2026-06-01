@@ -6,7 +6,10 @@ import {
   GoogleAuthProvider,
   signOut,
   updateProfile,
-  onAuthStateChanged
+  onAuthStateChanged,
+  sendPasswordResetEmail,
+  updatePassword,
+  confirmPasswordReset
 } from 'firebase/auth';
 import { auth, isFirebaseConfigured } from '../config/firebaseConfig';
 import audioSynth from '../utils/audioSynth';
@@ -1529,6 +1532,58 @@ export const AppProvider = ({ children }) => {
     }
   };
 
+  const resetPassword = async (email) => {
+    if (isFirebaseConfigured() && auth) {
+      try {
+        const actionCodeSettings = {
+          url: window.location.origin + '/login',
+          handleCodeInApp: true,
+        };
+        await sendPasswordResetEmail(auth, email, actionCodeSettings);
+      } catch (err) {
+        console.error("Firebase Reset Password Error: ", err);
+        throw err;
+      }
+    } else {
+      // Simulate
+      console.log(`[SIMULATION] Password reset email sent to ${email}`);
+      return true;
+    }
+  };
+
+  const changePassword = async (newPassword) => {
+    if (isFirebaseConfigured() && auth) {
+      try {
+        if (!auth.currentUser) {
+          throw new Error("No user is currently authenticated to change password.");
+        }
+        await updatePassword(auth.currentUser, newPassword);
+      } catch (err) {
+        console.error("Firebase Change Password Error: ", err);
+        throw err;
+      }
+    } else {
+      // Simulate
+      console.log("[SIMULATION] Password changed successfully.");
+      return true;
+    }
+  };
+
+  const confirmResetPassword = async (oobCode, newPassword) => {
+    if (isFirebaseConfigured() && auth) {
+      try {
+        await confirmPasswordReset(auth, oobCode, newPassword);
+      } catch (err) {
+        console.error("Firebase Confirm Password Reset Error: ", err);
+        throw err;
+      }
+    } else {
+      // Simulate
+      console.log(`[SIMULATION] Password reset confirmed successfully for code ${oobCode}.`);
+      return true;
+    }
+  };
+
   // Toggle role via backend (dev only)
   const toggleRole = async (newRole) => {
     setRole(newRole);
@@ -1546,12 +1601,16 @@ export const AppProvider = ({ children }) => {
       value={{
         // Authentication Context (Firebase)
         authProfile,
+        isAuthChecked,
         isFirebaseConfigured: isFirebaseConfigured(),
         loginWithEmail,
         registerWithEmail,
         loginWithGoogle,
         logout,
         updateAuthProfile,
+        resetPassword,
+        changePassword,
+        confirmResetPassword,
 
         // Nav
         activeScreen,

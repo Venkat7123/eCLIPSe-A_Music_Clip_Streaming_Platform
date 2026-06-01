@@ -115,13 +115,13 @@ const Downloads = () => {
             </button>
             <button
               onClick={() => handlePlay(download, list)}
-              className="p-1.5 rounded-full bg-brand-primary text-black hover:bg-brand-primary-hover shadow transition hover:scale-105 active:scale-95 cursor-pointer"
+              className="w-6 h-6 flex items-center justify-center rounded-full bg-brand-primary text-black hover:bg-brand-primary-hover shadow transition hover:scale-105 active:scale-95 cursor-pointer"
               title={isCurrentPlaying ? 'Pause' : 'Play'}
             >
               {isCurrentPlaying ? (
                 <Pause className="w-3 h-3 fill-black text-black" />
               ) : (
-                <Play className="w-3 h-3 fill-black text-black translate-x-0.5" />
+                <Play className="w-3 h-3 fill-black text-black" />
               )}
             </button>
           </div>
@@ -179,10 +179,10 @@ const Downloads = () => {
                 <div className="flex items-center gap-2">
                   <button
                     onClick={() => handlePlay(group.tracks[0], group.tracks)}
-                    className="p-1.5 rounded-full bg-brand-primary text-black hover:bg-brand-primary-hover shadow transition hover:scale-105 active:scale-95 cursor-pointer"
+                    className="w-6 h-6 flex items-center justify-center rounded-full bg-brand-primary text-black hover:bg-brand-primary-hover shadow transition hover:scale-105 active:scale-95 cursor-pointer"
                     title="Play playlist"
                   >
-                    <Play className="w-3 h-3 fill-black text-black translate-x-0.5" />
+                    <Play className="w-3 h-3 fill-black text-black" />
                   </button>
                   <button
                     onClick={() => handleRemovePlaylist(group.id)}
@@ -203,7 +203,9 @@ const Downloads = () => {
                     <th className="py-2 px-4 w-24 text-center">Duration</th>
                     <th className="py-2 px-4 w-24 text-center">Downloaded</th>
                     <th className="py-2 px-4 w-20 text-center">Size</th>
-                    <th className="py-2 px-4 w-24 text-right">Actions</th>
+                    <th className="py-2 px-4 w-24 text-right">
+                      <div className="flex justify-end">Actions</div>
+                    </th>
                   </tr>
                 </thead>
                 <tbody>
@@ -225,7 +227,9 @@ const Downloads = () => {
                     <th className="py-3 px-4 w-24 text-center">Duration</th>
                     <th className="py-3 px-4 w-24 text-center">Downloaded</th>
                     <th className="py-3 px-4 w-20 text-center">Size</th>
-                    <th className="py-3 px-4 w-24 text-right">Actions</th>
+                    <th className="py-3 px-4 w-24 text-right">
+                      <div className="flex justify-end">Actions</div>
+                    </th>
                   </tr>
                 </thead>
                 <tbody>

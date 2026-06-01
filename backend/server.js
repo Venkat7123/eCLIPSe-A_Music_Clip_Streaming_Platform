@@ -24,11 +24,25 @@ import coverRoutes from './routes/coverRoutes.js';
 
 const app = express();
 const httpServer = createServer(app);
-const PORT = process.env.PORT || 5000;
+const PORT = process.env.PORT || 8080;
 
 // CORS
+const allowedOrigins = ['http://localhost:5173', 'http://127.0.0.1:5173'];
+if (process.env.FRONTEND_URL) {
+  allowedOrigins.push(...process.env.FRONTEND_URL.split(','));
+}
+if (process.env.ALLOWED_ORIGINS) {
+  allowedOrigins.push(...process.env.ALLOWED_ORIGINS.split(','));
+}
+
 app.use(cors({
-  origin: ['http://localhost:5173', 'http://127.0.0.1:5173'],
+  origin: (origin, callback) => {
+    if (!origin || allowedOrigins.indexOf(origin) !== -1 || allowedOrigins.includes('*')) {
+      callback(null, true);
+    } else {
+      callback(new Error('Not allowed by CORS'));
+    }
+  },
   credentials: true,
 }));
 
@@ -58,15 +72,21 @@ app.use(errorHandler);
 
 // Start
 async function start() {
-  await connectDB();
-  await connectRedis();
   initSocket(httpServer);
 
-  httpServer.listen(PORT, () => {
+  httpServer.listen(PORT, '0.0.0.0', () => {
     console.log('==================================================');
     console.log(`eCLIPSe Backend Server listening at http://localhost:${PORT}`);
     console.log(`Environment: ${process.env.NODE_ENV || 'development'}`);
     console.log('==================================================');
+  });
+
+  // Connect to database and cache asynchronously in the background
+  connectDB().catch((err) => {
+    console.error('[SERVER] Unexpected DB start error:', err);
+  });
+  connectRedis().catch((err) => {
+    console.error('[SERVER] Unexpected Redis start error:', err);
   });
 }
 

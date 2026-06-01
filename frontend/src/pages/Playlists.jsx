@@ -132,7 +132,7 @@ const Playlists = () => {
                       className="w-12 h-12 rounded-full bg-brand-primary text-black flex items-center justify-center shadow-xl hover:scale-105 active:scale-95 transition"
                       title="Play Playlist"
                     >
-                      <Play className="w-6 h-6 fill-black text-black translate-x-0.5" />
+                      <Play className="w-6 h-6 fill-black text-black" />
                     </button>
                   </div>
 

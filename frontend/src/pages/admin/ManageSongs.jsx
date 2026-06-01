@@ -116,7 +116,9 @@ const ManageSongs = ({
                 <th className="py-5 px-4 font-outfit">Duration</th>
                 <th className="py-5 px-4 font-outfit">Added On</th>
                 <th className="py-5 px-4 font-outfit">Plays</th>
-                <th className="py-5 px-6 w-24 text-right font-outfit">Actions</th>
+                <th className="py-5 px-6 w-24 text-right font-outfit">
+                  <div className="flex justify-end">Actions</div>
+                </th>
               </tr>
             </thead>
             <tbody className="divide-y divide-white/5 font-outfit">

@@ -13,10 +13,7 @@ export async function connectRedis() {
     await redisClient.connect();
   } catch (err) {
     console.error('[REDIS] Connection failed:', err.message);
-    // Non-fatal — app can run without Redis in development
-    if (process.env.NODE_ENV === 'production') {
-      process.exit(1);
-    }
+    // Non-fatal — app can run without Redis
   }
 }
 

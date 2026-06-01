@@ -7,10 +7,14 @@ const serviceAccount = {
 };
 
 if (serviceAccount.projectId && serviceAccount.clientEmail && serviceAccount.privateKey) {
-  admin.initializeApp({
-    credential: admin.credential.cert(serviceAccount),
-  });
-  console.log('[FIREBASE] Admin SDK initialized');
+  try {
+    admin.initializeApp({
+      credential: admin.credential.cert(serviceAccount),
+    });
+    console.log('[FIREBASE] Admin SDK initialized');
+  } catch (err) {
+    console.error('[FIREBASE] Admin SDK initialization failed:', err.message);
+  }
 } else {
   console.warn('[FIREBASE] Admin SDK not initialized — missing credentials');
 }
