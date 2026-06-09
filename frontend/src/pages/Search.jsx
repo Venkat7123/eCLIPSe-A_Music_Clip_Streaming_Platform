@@ -29,6 +29,7 @@ const Search = () => {
     downloadingTrackIds,
     downloadTrack,
     removeDownload,
+    deleteClip,
     isOnline
   } = useApp();
 
@@ -440,6 +441,25 @@ const Search = () => {
                                       </>
                                     )}
                                   </button>
+
+                                  {track.isClip && (
+                                    <button
+                                      onClick={async (e) => {
+                                        e.stopPropagation();
+                                        setOpenMenuTrackId(null);
+                                        try {
+                                          await deleteClip(track.clipObj.id);
+                                          toast.success('Clip deleted.');
+                                        } catch (err) {
+                                          toast.error('Failed to delete clip.');
+                                        }
+                                      }}
+                                      className="w-full px-3 py-2 text-xs text-red-400 hover:text-red-300 hover:bg-white/5 flex items-center gap-2.5 transition cursor-pointer"
+                                    >
+                                      <X className="w-3.5 h-3.5" />
+                                      <span>Delete Clip</span>
+                                    </button>
+                                  )}
                                 </div>
                               </>
                             )}

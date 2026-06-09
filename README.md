@@ -25,16 +25,29 @@ Built with a robust client-server architecture, the application utilizes cutting
 
 *   **🎧 Immersive Music Playback**:
     *   Smooth audio streaming with high-fidelity visualization using Wavesurfer.js waveforms.
+    *   **Real-Time Audio Synthesis Engine**: Custom Web Audio API generative engine (`audioSynth.js`) capable of synthesizing Lo-Fi, Synthwave, Techno, and Acoustic tracks completely offline without any network bandwidth.
+    *   **Interactive Karaoke Lyrics**: Synchronized, scrolling lyrics that highlight dynamically based on real-time playback position.
     *   Real-time state synchronization across sessions utilizing Socket.io.
-    *   Offline resilience with IndexedDB, allowing users to listen to cached songs and playlists without an active internet connection.
+*   **💾 Robust Offline Mode & Downloads**:
+    *   **Download Manager**: Advanced offline caching utilizing IndexedDB to locally download audio blobs and artwork for zero-bandwidth offline listening.
+    *   **Offline UI Views**: Dedicated offline fallback views allowing users to seamlessly browse and play their downloaded library when disconnected from the internet.
 *   **🎛️ Interactive Playlist & Queue Customization**:
+    *   **Audio Precision Clipping**: A robust Trim Editor to generate custom clips of tracks (e.g., favorite choruses, drops, or solos) with frame-accurate start and end points and compile them into playlists.
     *   **Custom Queue Reordering**: Drag-and-drop tracks directly in the "Now Playing" queue to customize your playback sequence on-the-fly.
     *   **Custom Playlist Reordering**: Reorder songs and custom clips inside playlists using simple drag-and-drop handles.
-    *   **Audio Precision Clipping**: Generate custom clips of tracks (e.g., favorite choruses, drops, or solos) with frame-accurate start and end points and compile them into playlists.
+    *   **Global Search & Discovery**: Advanced search functionality to seamlessly discover tracks, artists, and curated playlists.
 *   **👑 Administrator Catalog Management**:
     *   **Song Library Controls**: Exclusive controls for users with the `ADMIN` role to upload new songs (metadata, audio files, and artwork) and manage the global catalog (edit/delete).
-    *   **User & Role Management**: Admin panel to view active system users and configure roles.
+    *   **Automated YouTube Import**: Effortlessly import new tracks by pasting a YouTube or YouTube Music link—automatically extracting metadata, album artwork, and audio in seconds.
+    *   **User & Role Management**: Dedicated Admin panel to view active system users and dynamically configure application roles.
     *   **Cloud CDN Hosting**: Native integration with Cloudinary for fast and optimized delivery of audio and image assets.
+*   **🔐 Secure Authentication & Account Management**:
+    *   **Firebase Integration**: Secure Email/Password and Google Sign-in capabilities.
+    *   **Self-Service Recovery**: Built-in forgot password and secure password reset workflows.
+    *   **Account Settings**: User settings modal for seamless password updates and session management.
+*   **☁️ Deployment Ready**:
+    *   **Containerized Backend**: Included `Dockerfile` and `.gcloudignore` for straightforward deployments to platforms like Google Cloud Run.
+    *   **Optimized Frontend**: `vercel.json` configuration for instant, zero-config deployment to Vercel.
 
 ## 🏗️ Architecture & Workflow
 

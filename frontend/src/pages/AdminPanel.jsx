@@ -13,6 +13,9 @@ const AdminPanel = () => {
     tracks,
     playlists,
     addSongToLibrary,
+    updateSongInLibrary,
+    addSongFromYouTube,
+    extractSongFromYouTube,
     deleteSongFromLibrary,
     allUsers,
     loadAllUsers,
@@ -21,6 +24,7 @@ const AdminPanel = () => {
   } = useApp();
 
   const [activeSubTab, setActiveSubTab] = useState('Songs'); // 'Songs', 'AddSong', 'Users'
+  const [editingTrack, setEditingTrack] = useState(null);
   const [successMsg, setSuccessMsg] = useState('');
 
   // Auto-dismiss success message after 4 seconds
@@ -53,16 +57,19 @@ const AdminPanel = () => {
           <ManageSongs 
             tracks={tracks}
             playlists={playlists}
-            onAddSongClick={() => setActiveSubTab('AddSong')}
+            onAddSongClick={() => { setEditingTrack(null); setActiveSubTab('AddSong'); }}
             onSongDelete={deleteSongFromLibrary}
-            onSongEdit={() => setActiveSubTab('AddSong')}
+            onSongEdit={(track) => { setEditingTrack(track); setActiveSubTab('AddSong'); }}
           />
         );
       case 'AddSong':
         return (
           <AddNewSong
             tracks={tracks}
+            editingTrack={editingTrack}
             onBackClick={() => setActiveSubTab('Songs')}
+            onYouTubeExtract={extractSongFromYouTube}
+            onSongUpdate={updateSongInLibrary}
             onSongAdded={async (songData) => {
               try {
                 const result = await addSongToLibrary(songData);

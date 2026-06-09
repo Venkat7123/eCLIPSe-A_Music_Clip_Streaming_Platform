@@ -293,10 +293,28 @@ const TrimEditor = () => {
       audioSynth.stop();
       setIsPreviewPlaying(false);
     } else {
-      audioSynth.stop();
       const resumePos = lastPlayheadRef.current;
-      const offset = (resumePos > startSec && resumePos < endSec) ? resumePos : 0;
-      playAudio(offset);
+      const inBounds = resumePos > startSec && resumePos < endSec;
+      if (inBounds && audioSynth.audioElement && !audioSynth.isPlaying) {
+        // Resume existing audio element from paused position
+        audioSynth.isPlaying = true;
+        audioSynth.clipStart = startSec;
+        audioSynth.clipEnd = endSec;
+        audioSynth.audioElement.play();
+        // Re-apply clip boundary loop
+        const checkInterval = setInterval(() => {
+          if (!audioSynth.isPlaying) { clearInterval(checkInterval); return; }
+          if (audioSynth.audioElement.currentTime >= endSec) {
+            audioSynth.audioElement.currentTime = startSec;
+          }
+        }, 100);
+        audioSynth.intervals.push(checkInterval);
+        setIsPreviewPlaying(true);
+      } else {
+        // Fresh play from start (or last known position if in bounds)
+        const offset = inBounds ? (resumePos - startSec) : 0;
+        playAudio(offset);
+      }
     }
   };
 

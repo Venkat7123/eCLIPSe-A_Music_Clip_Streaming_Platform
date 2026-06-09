@@ -10,6 +10,8 @@ import { promisify } from 'util';
 const execFileAsync = promisify(execFile);
 const UPLOADS_DIR = path.resolve('uploads');
 
+
+
 export async function getAllTracks(search, genre) {
   const cacheKey = `tracks:${search || ''}:${genre || ''}`;
   const cached = await cacheGet(cacheKey);
@@ -105,6 +107,50 @@ export async function createTrack({ title, artist, album, genre, duration, audio
   return track;
 }
 
+export async function updateTrack(id, { title, artist, album, genre, artworkPath }) {
+  const track = await Track.findById(id);
+  if (!track) return null;
+
+  let artworkUrl = track.artwork;
+  let cloudinaryArtworkId = track.cloudinaryArtworkId;
+
+  if (artworkPath) {
+    if (isCloudinaryConfigured && !artworkPath.startsWith('http')) {
+      if (track.cloudinaryArtworkId) {
+        try {
+          await cloudinary.uploader.destroy(track.cloudinaryArtworkId, { resource_type: 'image' });
+        } catch (err) {
+          console.error('[CLOUDINARY] Failed to delete old artwork:', err.message);
+        }
+      }
+      
+      const artworkResult = await cloudinary.uploader.upload(artworkPath, {
+        resource_type: 'image',
+        folder: 'eclipse/artwork',
+        transformation: [{ width: 500, height: 500, crop: 'limit', quality: 'auto' }],
+      });
+      artworkUrl = artworkResult.secure_url;
+      cloudinaryArtworkId = artworkResult.public_id;
+      await fs.unlink(artworkPath).catch(() => {});
+    } else {
+      artworkUrl = artworkPath.startsWith('http') ? artworkPath : path.basename(artworkPath);
+    }
+  }
+
+  track.title = title || track.title;
+  track.artist = artist || track.artist;
+  track.album = album || track.album;
+  track.genre = genre || track.genre;
+  track.artwork = artworkUrl;
+  track.cloudinaryArtworkId = cloudinaryArtworkId;
+
+  await track.save();
+  await cacheDelPattern('tracks:*');
+  await cacheDel(`track:${id}`);
+
+  return track;
+}
+
 export async function deleteTrack(id) {
   const track = await Track.findById(id);
   if (!track) return null;
@@ -147,6 +193,159 @@ export async function deleteTrack(id) {
   await cacheDel(`track:${id}`);
 
   return track;
+}
+
+// Validate YouTube / YouTube Music URL
+function isValidYTUrl(url) {
+  try {
+    const u = new URL(url);
+    return (
+      u.hostname === 'www.youtube.com' ||
+      u.hostname === 'youtube.com' ||
+      u.hostname === 'youtu.be' ||
+      u.hostname === 'm.youtube.com' ||
+      u.hostname === 'music.youtube.com'
+    );
+  } catch {
+    return false;
+  }
+}
+
+export async function createTrackFromYouTube(url, uploadedBy) {
+  if (!isValidYTUrl(url)) {
+    throw Object.assign(new Error('Invalid YouTube URL'), { status: 400 });
+  }
+
+  // 1. Extract metadata
+  const { stdout: infoJson } = await execFileAsync('yt-dlp', [
+    '--dump-json', '--no-download', '--no-playlist', url,
+  ], { timeout: 30000 });
+  const info = JSON.parse(infoJson);
+
+  const title = info.title || 'Untitled';
+  const artist = info.channel || info.uploader || 'Unknown';
+  const duration = Math.round(info.duration || 0);
+  const thumbnailUrl = info.thumbnail || '';
+
+  // 2. Download audio to uploads/
+  const audioFilename = `yt_${Date.now()}.m4a`;
+  const audioPath = path.join(UPLOADS_DIR, audioFilename);
+
+  await execFileAsync('yt-dlp', [
+    '-f', 'bestaudio[ext=m4a]/bestaudio',
+    '-o', audioPath,
+    '--no-playlist',
+    url,
+  ], { timeout: 120000 });
+
+  // 3. Download thumbnail to uploads/
+  let artworkPath = '';
+  if (thumbnailUrl) {
+    const artworkFilename = `yt_thumb_${Date.now()}.jpg`;
+    artworkPath = path.join(UPLOADS_DIR, artworkFilename);
+    try {
+      await execFileAsync('yt-dlp', [
+        '--write-thumbnail', '--skip-download',
+        '--convert-thumbnails', 'jpg',
+        '-o', artworkPath.replace('.jpg', ''),
+        '--no-playlist',
+        url,
+      ], { timeout: 30000 });
+      // yt-dlp may append .jpg automatically
+      const possiblePaths = [artworkPath, artworkPath.replace('.jpg', '') + '.jpg'];
+      for (const p of possiblePaths) {
+        try { await fs.access(p); artworkPath = p; break; } catch {}
+      }
+    } catch (thumbErr) {
+      console.warn('[YT] Thumbnail download failed, will use URL fallback:', thumbErr.message);
+      artworkPath = '';
+    }
+  }
+
+  // 4. Create track using existing flow (peaks, Cloudinary upload, MongoDB insert)
+  const track = await createTrack({
+    title,
+    artist,
+    album: 'Single',
+    genre: '',
+    duration,
+    audioPath,
+    artworkPath,
+    uploadedBy,
+    mimeType: 'audio/mpeg',
+  });
+
+  return track;
+}
+
+export async function extractYouTubeMetadata(url) {
+  if (!isValidYTUrl(url)) {
+    throw Object.assign(new Error('Invalid YouTube URL'), { status: 400 });
+  }
+
+  // 1. Extract metadata
+  const { stdout: infoJson } = await execFileAsync('yt-dlp', [
+    '--dump-json', '--no-download', '--no-playlist', url,
+  ], { timeout: 30000 });
+  const info = JSON.parse(infoJson);
+
+  let title = info.title || 'Untitled';
+  let album = 'Single';
+  const fromAlbumMatch = title.match(/(.+?)\s*\(\s*From\s+["']?([^"']+)["']?\s*\)/i);
+  if (fromAlbumMatch) {
+    title = fromAlbumMatch[1].trim();
+    album = fromAlbumMatch[2].trim();
+  }
+
+  const artist = info.channel || info.uploader || 'Unknown';
+  const duration = Math.round(info.duration || 0);
+  const thumbnailUrl = info.thumbnail || '';
+
+  // 2. Download audio to uploads/
+  const audioFilename = `yt_${Date.now()}.m4a`;
+  const audioPath = path.join(UPLOADS_DIR, audioFilename);
+
+  await execFileAsync('yt-dlp', [
+    '-f', 'bestaudio[ext=m4a]/bestaudio',
+    '-o', audioPath,
+    '--no-playlist',
+    url,
+  ], { timeout: 120000 });
+
+  // 3. Download thumbnail to uploads/
+  let artworkFilename = '';
+  if (thumbnailUrl) {
+    artworkFilename = `yt_thumb_${Date.now()}.jpg`;
+    let artworkPath = path.join(UPLOADS_DIR, artworkFilename);
+    try {
+      await execFileAsync('yt-dlp', [
+        '--write-thumbnail', '--skip-download',
+        '--convert-thumbnails', 'jpg',
+        '-o', artworkPath.replace('.jpg', ''),
+        '--no-playlist',
+        url,
+      ], { timeout: 30000 });
+      // yt-dlp may append .jpg automatically
+      const possiblePaths = [artworkPath, artworkPath.replace('.jpg', '') + '.jpg'];
+      let found = false;
+      for (const p of possiblePaths) {
+        try { await fs.access(p); artworkFilename = path.basename(p); found = true; break; } catch {}
+      }
+      if (!found) artworkFilename = '';
+    } catch (thumbErr) {
+      console.warn('[YT] Thumbnail download failed, will use URL fallback:', thumbErr.message);
+      artworkFilename = '';
+    }
+  }
+
+  return {
+    title,
+    artist,
+    album,
+    duration,
+    audioUrl: `/uploads/${audioFilename}`,
+    artworkUrl: artworkFilename ? `/uploads/${artworkFilename}` : thumbnailUrl,
+  };
 }
 
 async function extractPeaks(audioPath, numPeaks = 100) {

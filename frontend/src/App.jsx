@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { useApp } from './context/AppContext';
 import Sidebar from './components/Sidebar';
 import Player from './components/Player';
@@ -64,6 +64,9 @@ function App() {
     allUsers,
     loadAllUsers,
     addSongToLibrary,
+    updateSongInLibrary,
+    addSongFromYouTube,
+    extractSongFromYouTube,
     deleteSongFromLibrary,
     toggleUserStatus,
     boostUserStreams,
@@ -71,6 +74,8 @@ function App() {
     downloadTrack,
     downloadedTrackIds
   } = useApp();
+
+  const [adminEditingTrack, setAdminEditingTrack] = useState(null);
 
   const renderActiveScreen = () => {
     switch (activeScreen) {
@@ -102,9 +107,9 @@ function App() {
             <ManageSongs
               tracks={tracks}
               playlists={playlists}
-              onAddSongClick={() => navigate('admin-add-song')}
+              onAddSongClick={() => { setAdminEditingTrack(null); navigate('admin-add-song'); }}
               onSongDelete={deleteSongFromLibrary}
-              onSongEdit={() => navigate('admin-add-song')}
+              onSongEdit={(track) => { setAdminEditingTrack(track); navigate('admin-add-song'); }}
             />
           </div>
         );
@@ -114,8 +119,11 @@ function App() {
           <div className="flex-1 overflow-y-auto px-6 md:px-12 py-8 pb-24">
             <AddNewSong
               tracks={tracks}
+              editingTrack={adminEditingTrack}
               onBackClick={() => navigate('admin-manage-songs')}
               onSongAdded={addSongToLibrary}
+              onSongUpdate={updateSongInLibrary}
+              onYouTubeExtract={extractSongFromYouTube}
             />
           </div>
         );

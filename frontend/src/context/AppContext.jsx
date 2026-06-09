@@ -660,6 +660,8 @@ export const AppProvider = ({ children }) => {
   // Audio Synth synchronizer — checks IndexedDB first for offline playback
   useEffect(() => {
     if (isPlaying && currentTrack) {
+      // If audio was just resumed (pause/resume cycle), don't restart it
+      if (audioSynth.isPlaying && !audioSynth.isPaused) return;
       const clipStart = playbackMode === 'clip' && currentClip ? currentClip.start : 0;
       const clipEnd = playbackMode === 'clip' && currentClip ? currentClip.end : null;
 
@@ -701,7 +703,8 @@ export const AppProvider = ({ children }) => {
         // Seed track, no clip
         audioSynth.play(currentTrack.title, currentTime, 0, null, currentTrack.audioUrl);
       }
-    } else {
+    } else if (!audioSynth.isPaused) {
+      // Only fully stop if not in a paused state (paused clips preserve the audio element)
       audioSynth.stop();
     }
   }, [isPlaying, currentTrack?.id, playbackMode, currentClip?.id]);
@@ -1000,7 +1003,31 @@ export const AppProvider = ({ children }) => {
 
   const togglePlay = () => {
     audioSynth.init();
-    setIsPlaying(!isPlaying);
+    if (isPlaying) {
+      // Pausing — preserve audio element for clips so resume works
+      if (playbackMode === 'clip' && currentClip) {
+        audioSynth.pause();
+        // Sync React timer to actual audio position
+        const actual = audioSynth.getCurrentTime();
+        if (actual !== null) {
+          setCurrentTime(Math.floor(actual - currentClip.start));
+        }
+      } else {
+        audioSynth.stop();
+      }
+      setIsPlaying(false);
+    } else {
+      // Resuming — try to resume preserved audio for clips
+      if (playbackMode === 'clip' && currentClip && audioSynth.isPaused) {
+        const resumed = audioSynth.resume(currentClip.start, currentClip.end);
+        if (resumed) {
+          setIsPlaying(true);
+          return;
+        }
+      }
+      // Fallback: full restart (the audio synth synchronizer effect will handle it)
+      setIsPlaying(true);
+    }
   };
 
   const handleNext = () => {
@@ -1463,6 +1490,45 @@ export const AppProvider = ({ children }) => {
     throw new Error('Audio file is required. Please select a file to upload.');
   };
 
+  const addSongFromYouTube = async (url) => {
+    const data = await api.post('/tracks/from-youtube', { url });
+    const mapped = {
+      id: data.track._id,
+      title: data.track.title,
+      artist: data.track.artist,
+      album: data.track.album,
+      duration: data.track.duration,
+      artwork: data.track.artwork || '/uploads/artwork/neon_highway.png',
+      audioFile: data.track.audioFile || null,
+    };
+    setTracks((prev) => [...prev, mapped]);
+    setBackendAvailable(true);
+    return mapped;
+  };
+
+  const extractSongFromYouTube = async (url) => {
+    const data = await api.post('/tracks/extract-youtube', { url });
+    return data;
+  };
+
+  const updateSongInLibrary = async (songId, formData) => {
+    const data = await api.put(`/tracks/${songId}`, formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    });
+    const mapped = {
+      id: data.track._id,
+      title: data.track.title,
+      artist: data.track.artist,
+      album: data.track.album,
+      duration: data.track.duration,
+      artwork: data.track.artwork || '/uploads/artwork/neon_highway.png',
+      audioFile: data.track.audioFile || null,
+    };
+    setTracks((prev) => prev.map(t => t.id === songId ? { ...t, ...mapped } : t));
+    setBackendAvailable(true);
+    return mapped;
+  };
+
   const deleteSongFromLibrary = async (songId) => {
     try {
       await api.delete(`/tracks/${songId}`);
@@ -1674,6 +1740,9 @@ export const AppProvider = ({ children }) => {
         removeSongFromPlaylist,
         updateClipInPlaylist,
         addSongToLibrary,
+        updateSongInLibrary,
+        addSongFromYouTube,
+        extractSongFromYouTube,
         deleteSongFromLibrary,
         createClip,
         deleteClip,

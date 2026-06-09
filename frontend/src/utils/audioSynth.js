@@ -18,6 +18,7 @@ class AudioSynth {
     this.clipEnd = null;
     this.audioElement = null;
     this.audioSource = null;
+    this.isPaused = false;
   }
 
   init() {
@@ -63,6 +64,65 @@ class AudioSynth {
         this.audioElement.src = '';
       } catch (e) {}
     }
+    this.isPaused = false;
+  }
+
+  // Pause audio without destroying the element (for clip pause/resume)
+  pause() {
+    if (!this.isPlaying) return;
+    this.isPlaying = false;
+    this.isPaused = true;
+
+    // Clear intervals but keep the audio element alive
+    this.intervals.forEach(clearInterval);
+    this.intervals = [];
+
+    this.activeNodes.forEach(node => {
+      try { node.stop(); } catch (e) {}
+    });
+    this.activeNodes = [];
+
+    if (this.audioElement) {
+      try { this.audioElement.pause(); } catch (e) {}
+    }
+  }
+
+  // Resume paused audio from current position with clip boundaries
+  resume(clipStart = 0, clipEnd = null) {
+    if (!this.isPaused || !this.audioElement) {
+      return false; // Nothing to resume
+    }
+    this.isPlaying = true;
+    this.isPaused = false;
+    this.clipStart = clipStart;
+    this.clipEnd = clipEnd;
+
+    // Re-apply clip boundary check if needed
+    if (clipEnd !== null) {
+      const checkInterval = setInterval(() => {
+        if (!this.isPlaying) {
+          clearInterval(checkInterval);
+          return;
+        }
+        if (this.audioElement.currentTime >= clipEnd) {
+          this.audioElement.currentTime = clipStart;
+        }
+      }, 100);
+      this.intervals.push(checkInterval);
+    }
+
+    this.audioElement.play().catch(err => {
+      console.warn("Failed to resume audio:", err);
+    });
+    return true;
+  }
+
+  // Get current audio position (for accurate resume)
+  getCurrentTime() {
+    if (this.audioElement && !this.audioElement.ended) {
+      return this.audioElement.currentTime;
+    }
+    return null;
   }
 
   play(trackType, startTimeOffset = 0, clipStart = 0, clipEnd = null, audioUrl = null) {

@@ -1,23 +1,44 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { useToast } from '../../context/ToastContext';
-import { 
-  ArrowLeft, 
-  Bell, 
-  Music, 
-  Upload, 
-  FileImage, 
-  FileAudio, 
-  X, 
-  Pause, 
-  Play, 
-  Clock, 
-  RotateCcw 
+import {
+  ArrowLeft,
+  Bell,
+  Music,
+  Upload,
+  FileImage,
+  FileAudio,
+  X,
+  Pause,
+  Play,
+  Clock,
+  RotateCcw,
+  Link,
+  Loader2,
+  AlertCircle,
 } from 'lucide-react';
 
-const AddNewSong = ({ 
-  tracks, 
-  onBackClick, 
-  onSongAdded 
+const Youtube = ({ className }) => (
+  <svg
+    className={className}
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="2"
+    strokeLinecap="round"
+    strokeLinejoin="round"
+  >
+    <path d="M2.5 17a24.12 24.12 0 0 1 0-10 2 2 0 0 1 1.4-1.4 49.56 49.56 0 0 1 16.2 0A2 2 0 0 1 21.5 7a24.12 24.12 0 0 1 0 10 2 2 0 0 1-1.4 1.4 49.55 49.55 0 0 1-16.2 0A2 2 0 0 1 2.5 17" />
+    <path d="m10 15 5-3-5-3z" />
+  </svg>
+);
+
+const AddNewSong = ({
+  tracks,
+  onBackClick,
+  onSongAdded,
+  onSongUpdate,
+  onYouTubeExtract,
+  editingTrack,
 }) => {
   const toast = useToast();
   // Form state
@@ -35,6 +56,31 @@ const AddNewSong = ({
   const [selectedAudioUrl, setSelectedAudioUrl] = useState('');
   const [isDurationCalculated, setIsDurationCalculated] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
+  const [serverAudioUrl, setServerAudioUrl] = useState('');
+  const [serverArtworkUrl, setServerArtworkUrl] = useState('');
+
+  // Form initialization for Edit Mode
+  useEffect(() => {
+    if (editingTrack) {
+      setTitle(editingTrack.title || '');
+      setArtist(editingTrack.artist || '');
+      setAlbum(editingTrack.album || '');
+      setDurationSecs(editingTrack.duration || 0);
+      const mins = Math.floor((editingTrack.duration || 0) / 60);
+      const secs = (editingTrack.duration || 0) % 60;
+      setDurationStr(`${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`);
+      setIsDurationCalculated(true);
+      setArtworkUrl(editingTrack.artwork || '');
+      setSelectedAudioUrl(editingTrack.audioFile || '');
+    } else {
+      handleFormReset();
+    }
+  }, [editingTrack]);
+
+  // YouTube extraction states
+  const [ytUrl, setYtUrl] = useState('');
+  const [ytLoading, setYtLoading] = useState(false);
+  const [ytError, setYtError] = useState('');
 
   // Audio Preview Progress synchronization
   const [isPreviewPlaying, setIsPreviewPlaying] = useState(false);
@@ -189,6 +235,48 @@ const AddNewSong = ({
     setArtworkUrl(imgUrl);
   };
 
+  // YouTube URL extraction handler
+  const handleYouTubeExtract = async () => {
+    const url = ytUrl.trim();
+    if (!url) {
+      setYtError('Please enter a YouTube URL');
+      return;
+    }
+
+    setYtLoading(true);
+    setYtError('');
+
+    try {
+      const result = await onYouTubeExtract(url);
+      setYtUrl('');
+      
+      setTitle(result.title);
+      setArtist(result.artist);
+      if (result.album) setAlbum(result.album);
+      setDurationSecs(result.duration);
+      const mins = Math.floor(result.duration / 60);
+      const secs = result.duration % 60;
+      setDurationStr(`${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`);
+      setIsDurationCalculated(true);
+      
+      const BACKEND_URL = (import.meta.env.VITE_API_URL || 'http://localhost:5000').replace(/\/api$/, '');
+      const fullAudioUrl = result.audioUrl.startsWith('http') ? result.audioUrl : `${BACKEND_URL}${result.audioUrl}`;
+      const fullArtworkUrl = result.artworkUrl.startsWith('http') ? result.artworkUrl : `${BACKEND_URL}${result.artworkUrl}`;
+      
+      setSelectedAudioUrl(fullAudioUrl);
+      setArtworkUrl(fullArtworkUrl);
+      setServerAudioUrl(result.audioUrl);
+      setServerArtworkUrl(result.artworkUrl);
+      setAudioFileName(`YouTube: ${result.title}`);
+      
+      toast.success(`Extracted "${result.title}"! Review and click Add Song.`);
+    } catch (err) {
+      setYtError(err.message || 'Failed to extract from YouTube');
+    } finally {
+      setYtLoading(false);
+    }
+  };
+
   // Submit Handler
   const handleAddSongSubmit = async (e) => {
     if (e) e.preventDefault();
@@ -198,8 +286,8 @@ const AddNewSong = ({
     }
 
     const audioFile = audioInputRef.current?.files?.[0];
-    if (!audioFile) {
-      toast.warning('Please select an audio file to upload.');
+    if (!editingTrack && !audioFile && !serverAudioUrl) {
+      toast.warning('Please select an audio file to upload or extract from YouTube.');
       return;
     }
 
@@ -210,17 +298,31 @@ const AddNewSong = ({
     formData.append('artist', artist.trim());
     formData.append('album', album.trim() || 'Single');
     formData.append('duration', durationSecs);
-    formData.append('audio', audioFile);
+    
+    if (audioFile) {
+      formData.append('audio', audioFile);
+    } else if (serverAudioUrl) {
+      formData.append('serverAudioUrl', serverAudioUrl);
+    }
+    
     if (artworkFile) {
       formData.append('artwork', artworkFile);
+    } else if (serverArtworkUrl) {
+      formData.append('serverArtworkUrl', serverArtworkUrl);
     }
 
     setIsUploading(true);
     try {
-      await onSongAdded(formData);
-      handleFormReset();
+      if (editingTrack && onSongUpdate) {
+        await onSongUpdate(editingTrack.id, formData);
+        toast.success(`"${title}" updated successfully!`);
+        onBackClick();
+      } else {
+        await onSongAdded(formData);
+        handleFormReset();
+      }
     } catch (err) {
-      // Error already handled by AdminPanel
+      // Error already handled by AppContext/AdminPanel
     } finally {
       setIsUploading(false);
     }
@@ -240,6 +342,8 @@ const AddNewSong = ({
     setIsDurationCalculated(false);
     setIsPreviewPlaying(false);
     setPreviewCurrentTime(0);
+    setServerAudioUrl('');
+    setServerArtworkUrl('');
     if (previewAudioRef.current) {
       previewAudioRef.current.pause();
       previewAudioRef.current = null;
@@ -289,10 +393,14 @@ const AddNewSong = ({
           >
             <ArrowLeft className="w-4 h-4" />
           </button>
-          <div>
-            <h1 className="text-xl font-semibold text-white leading-tight font-outfit">Add New Song</h1>
-            <p className="text-[10px] text-zinc-500 font-medium mt-1 font-outfit">Upload an audio file and add song details</p>
-          </div>
+          <div className="text-left font-outfit">
+          <h1 className="text-2xl font-semibold text-white leading-tight font-outfit">
+            {editingTrack ? 'Edit Song' : 'Add New Song'}
+          </h1>
+          <p className="text-xs text-zinc-500 font-medium mt-1.5">
+            {editingTrack ? 'Update metadata and artwork for this track' : 'Upload an audio file or extract from a YouTube link'}
+          </p>
+        </div>
         </div>
 
         <div className="flex items-center gap-3 font-outfit">
@@ -305,6 +413,55 @@ const AddNewSong = ({
           </button>
         </div>
       </div>
+
+      {/* YouTube URL Extraction */}
+      {!editingTrack && (
+        <div className="bg-[#131520] border border-white/5 rounded-3xl p-8 flex flex-col gap-5 text-left font-outfit shadow-sm">
+        <h3 className="text-xs font-semibold text-white uppercase tracking-wider flex items-center gap-2 font-outfit">
+          <Youtube className="w-4 h-4 text-red-500" />
+          Import from YouTube
+        </h3>
+
+        <div className="flex gap-3">
+          <div className="relative flex-1">
+            <Link className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-500" />
+            <input
+              type="text"
+              value={ytUrl}
+              onChange={(e) => { setYtUrl(e.target.value); setYtError(''); }}
+              onKeyDown={(e) => e.key === 'Enter' && handleYouTubeExtract()}
+              placeholder="https://www.youtube.com/watch?v=... or music.youtube.com"
+              className="w-full bg-[#0b0c10] border border-white/10 rounded-xl py-3 pl-10 pr-4 text-white text-xs outline-none focus:border-brand-primary transition duration-200 font-outfit font-medium"
+            />
+          </div>
+          <button
+            type="button"
+            onClick={handleYouTubeExtract}
+            disabled={ytLoading}
+            className="px-6 py-3 bg-red-600 hover:bg-red-500 text-white font-semibold rounded-xl text-xs transition disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 shrink-0 cursor-pointer font-outfit"
+          >
+            {ytLoading ? (
+              <>
+                <Loader2 className="w-4 h-4 animate-spin" />
+                Extracting...
+              </>
+            ) : (
+              <>
+                <Youtube className="w-4 h-4" />
+                Extract
+              </>
+            )}
+          </button>
+        </div>
+
+        {ytError && (
+          <div className="p-3 bg-red-500/10 border border-red-500/20 rounded-xl flex items-center gap-2">
+            <AlertCircle className="w-4 h-4 text-red-400 shrink-0" />
+            <p className="text-xs text-red-300">{ytError}</p>
+          </div>
+        )}
+      </div>
+      )}
 
       {/* Split layout cards */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-10 items-start text-left">
@@ -400,8 +557,10 @@ const AddNewSong = ({
 
         {/* Right Column Card: "Audio Upload" */}
         <div className="flex flex-col gap-8 font-outfit">
-          
+
+
           {/* 1. File Upload Dropzone card */}
+          {!editingTrack && (
           <div className="bg-[#131520] border border-white/5 rounded-3xl p-8 flex flex-col gap-5 text-left font-outfit shadow-sm">
             <h3 className="text-xs font-semibold text-white uppercase tracking-wider font-outfit">
               Audio Upload
@@ -463,6 +622,7 @@ const AddNewSong = ({
               )}
             </div>
           </div>
+          )}
 
           {/* 2. Audio Preview Card */}
           <div className="bg-[#131520] border border-white/5 rounded-3xl p-8 flex flex-col gap-5 text-left font-outfit shadow-sm">
@@ -565,8 +725,8 @@ const AddNewSong = ({
                 </>
               ) : (
                 <>
-                  <Music className="w-4 h-4 text-black shrink-0" />
-                  <span>Add Song</span>
+                  <Music className="w-4 h-4 shrink-0" />
+                  <span>{editingTrack ? 'Save Changes' : 'Add Song'}</span>
                 </>
               )}
             </button>
