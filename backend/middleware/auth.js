@@ -12,8 +12,8 @@ export async function authenticateToken(req, res, next) {
     return res.status(401).json({ error: 'Access Denied. Authorization ID Token missing.' });
   }
 
-  // Simulated token bypass (development only)
-  if (process.env.NODE_ENV === 'development' && (token.startsWith(SIMULATED_TOKEN_PREFIX) || token.includes('sim_'))) {
+  // Simulated token bypass (development or when Firebase Admin is not configured)
+  if ((process.env.NODE_ENV === 'development' || !isFirebaseAdminConfigured()) && (token.startsWith(SIMULATED_TOKEN_PREFIX) || token.includes('sim_'))) {
     req.user = {
       uid: 'sim_firebase_uid_42',
       email: 'music.lover@entra.microsoft.com',

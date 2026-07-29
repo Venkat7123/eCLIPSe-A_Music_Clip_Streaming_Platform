@@ -3,9 +3,17 @@ import { Server } from 'socket.io';
 let io = null;
 
 export function initSocket(server) {
+  const allowedOrigins = ['http://localhost:5173', 'http://127.0.0.1:5173'];
+  if (process.env.FRONTEND_URL) {
+    allowedOrigins.push(...process.env.FRONTEND_URL.split(','));
+  }
+  if (process.env.ALLOWED_ORIGINS) {
+    allowedOrigins.push(...process.env.ALLOWED_ORIGINS.split(','));
+  }
+
   io = new Server(server, {
     cors: {
-      origin: ['http://localhost:5173', 'http://127.0.0.1:5173'],
+      origin: allowedOrigins,
       credentials: true,
     },
   });

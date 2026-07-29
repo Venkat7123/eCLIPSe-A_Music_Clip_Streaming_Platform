@@ -628,6 +628,11 @@ export const AppProvider = ({ children }) => {
   // Ref to track playback interval
   const timerRef = useRef(null);
 
+  // Refs to track currently playing audio synth parameters to avoid redundant restarts
+  const playingTrackIdRef = useRef(null);
+  const playingClipIdRef = useRef(null);
+  const playingPlaybackModeRef = useRef(null);
+
   // Sync state to local storage
   useEffect(() => {
     localStorage.setItem('eclipse_tracks', JSON.stringify(tracks));
@@ -661,7 +666,13 @@ export const AppProvider = ({ children }) => {
   useEffect(() => {
     if (isPlaying && currentTrack) {
       // If audio was just resumed (pause/resume cycle), don't restart it
-      if (audioSynth.isPlaying && !audioSynth.isPaused) return;
+      if (audioSynth.isPlaying &&
+          !audioSynth.isPaused &&
+          playingTrackIdRef.current === currentTrack.id &&
+          playingPlaybackModeRef.current === playbackMode &&
+          playingClipIdRef.current === (currentClip?.id || null)) {
+        return;
+      }
       const clipStart = playbackMode === 'clip' && currentClip ? currentClip.start : 0;
       const clipEnd = playbackMode === 'clip' && currentClip ? currentClip.end : null;
 
@@ -680,6 +691,9 @@ export const AppProvider = ({ children }) => {
             audioSynth.playFromStream(streamUrl, authProfile?.token, currentTime, clipStart, clipEnd);
           }
         });
+        playingTrackIdRef.current = currentTrack.id;
+        playingPlaybackModeRef.current = playbackMode;
+        playingClipIdRef.current = currentClip?.id || null;
         return;
       }
 
@@ -703,6 +717,10 @@ export const AppProvider = ({ children }) => {
         // Seed track, no clip
         audioSynth.play(currentTrack.title, currentTime, 0, null, currentTrack.audioUrl);
       }
+
+      playingTrackIdRef.current = currentTrack.id;
+      playingPlaybackModeRef.current = playbackMode;
+      playingClipIdRef.current = currentClip?.id || null;
     } else if (!audioSynth.isPaused) {
       // Only fully stop if not in a paused state (paused clips preserve the audio element)
       audioSynth.stop();
@@ -995,7 +1013,12 @@ export const AppProvider = ({ children }) => {
     setIsPlaying(true);
 
     // Clear queue when playing a standalone track (not from queue/playlist)
-    if (!fromQueue) {
+    if (fromQueue === true) {
+      // Keep queue and queueIndex unchanged (e.g. from next/prev navigation)
+    } else if (typeof fromQueue === 'number') {
+      // Set to the clicked queue item index
+      setQueueIndex(fromQueue);
+    } else {
       setQueue([]);
       setQueueIndex(-1);
     }

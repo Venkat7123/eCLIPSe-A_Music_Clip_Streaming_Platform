@@ -181,7 +181,7 @@ const NowPlaying = () => {
     const item = queue[index];
     if (!item) return;
     const track = tracks.find(t => t.id === item.trackId);
-    if (track) playTrack(track, !!item.clip, item.clip, true);
+    if (track) playTrack(track, !!item.clip, item.clip, index);
   };
 
   // Drag state for queue reordering

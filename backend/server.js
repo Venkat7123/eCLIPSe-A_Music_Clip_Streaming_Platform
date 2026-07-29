@@ -27,7 +27,7 @@ const httpServer = createServer(app);
 const PORT = process.env.PORT || 8080;
 
 // CORS
-const allowedOrigins = ['http://localhost:5173', 'http://127.0.0.1:5173'];
+const allowedOrigins = ['https://eclipse-music.vercel.app', 'http://localhost:5173', 'http://127.0.0.1:5173'];
 if (process.env.FRONTEND_URL) {
   allowedOrigins.push(...process.env.FRONTEND_URL.split(','));
 }
