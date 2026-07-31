@@ -35,3 +35,4 @@ backend/bin/
 backend/uploads/
 # Exceptions
 !backend/uploads/.gitkeep
+!backend/uploads/artwork/
