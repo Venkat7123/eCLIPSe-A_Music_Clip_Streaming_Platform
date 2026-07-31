@@ -362,7 +362,10 @@ export async function createTrackFromYouTube(url, uploadedBy) {
 
   // 1. Extract metadata
   const { stdout: infoJson } = await execFileAsync('yt-dlp', [
-    '--dump-json', '--no-download', '--no-playlist', '--js-runtimes', 'node', url,
+    '--dump-json', '--no-download', '--no-playlist', 
+    '--js-runtimes', 'node', 
+    '--extractor-args', 'youtube:player_client=android,web',
+    url,
   ], { timeout: 30000 });
   const info = JSON.parse(infoJson);
 
@@ -379,6 +382,7 @@ export async function createTrackFromYouTube(url, uploadedBy) {
     '-x',
     '--audio-format', 'mp3',
     '--js-runtimes', 'node',
+    '--extractor-args', 'youtube:player_client=android,web',
     '-o', audioPath.replace('.mp3', '') + '.%(ext)s',
     '--no-playlist',
     url,
@@ -394,6 +398,7 @@ export async function createTrackFromYouTube(url, uploadedBy) {
         '--write-thumbnail', '--skip-download',
         '--convert-thumbnails', 'jpg',
         '--js-runtimes', 'node',
+        '--extractor-args', 'youtube:player_client=android,web',
         '-o', artworkPath.replace('.jpg', ''),
         '--no-playlist',
         url,
@@ -437,7 +442,10 @@ export async function extractYouTubeMetadata(url) {
 
   // 1. Extract metadata
   const { stdout: infoJson } = await execFileAsync('yt-dlp', [
-    '--dump-json', '--no-download', '--no-playlist', '--js-runtimes', 'node', url,
+    '--dump-json', '--no-download', '--no-playlist', 
+    '--js-runtimes', 'node', 
+    '--extractor-args', 'youtube:player_client=android,web',
+    url,
   ], { timeout: 30000 });
   const info = JSON.parse(infoJson);
 
@@ -461,6 +469,7 @@ export async function extractYouTubeMetadata(url) {
     '-x',
     '--audio-format', 'mp3',
     '--js-runtimes', 'node',
+    '--extractor-args', 'youtube:player_client=android,web',
     '-o', audioPath.replace('.mp3', '') + '.%(ext)s',
     '--no-playlist',
     url,
@@ -477,6 +486,7 @@ export async function extractYouTubeMetadata(url) {
         '--write-thumbnail', '--skip-download',
         '--convert-thumbnails', 'jpg',
         '--js-runtimes', 'node',
+        '--extractor-args', 'youtube:player_client=android,web',
         '-o', localArtworkPath.replace('.jpg', ''),
         '--no-playlist',
         url,
