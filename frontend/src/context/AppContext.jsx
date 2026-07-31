@@ -29,7 +29,8 @@ import {
 
 const AppContext = createContext();
 
-const BACKEND_URL = (import.meta.env.VITE_API_URL || 'http://localhost:5000') + '/api';
+const baseApiUrl = (import.meta.env.VITE_API_URL || 'http://localhost:5000').replace(/\/$/, '');
+const BACKEND_URL = baseApiUrl + '/api';
 
 export const AppProvider = ({ children }) => {
   // Authentication State
@@ -1099,8 +1100,9 @@ export const AppProvider = ({ children }) => {
         if (currentTrack?.audioFile && currentTrack.audioFile.startsWith('http')) {
           audioSynth.playAudioFile(currentTrack.audioFile, 0, playbackMode === 'clip' && currentClip ? currentClip.start : 0, playbackMode === 'clip' && currentClip ? currentClip.end : null);
         } else if (currentTrack?.audioFile) {
-          const BACKEND_URL = (import.meta.env.VITE_API_URL || 'http://localhost:5000') + '/api';
-          const streamUrl = `${BACKEND_URL.replace('/api', '')}/api/stream/${currentTrack.id}`;
+          const baseApiUrl = (import.meta.env.VITE_API_URL || 'http://localhost:5000').replace(/\/$/, '');
+          const BACKEND_URL = baseApiUrl + '/api';
+          const streamUrl = `${baseApiUrl}/api/stream/${currentTrack.id}`;
           audioSynth.playFromStream(streamUrl, null, 0, playbackMode === 'clip' && currentClip ? currentClip.start : 0, playbackMode === 'clip' && currentClip ? currentClip.end : null);
         } else if (currentTrack) {
           audioSynth.play(currentTrack.title, 0, playbackMode === 'clip' && currentClip ? currentClip.start : 0, playbackMode === 'clip' && currentClip ? currentClip.end : null);

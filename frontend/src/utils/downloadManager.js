@@ -26,8 +26,9 @@ export async function downloadTrack(track, authProfile, playlistMeta = null) {
     audioBlob = await resp.blob();
   } else if (track.audioFile) {
     // Backend stream — fetch with auth
-    const BACKEND_URL = (import.meta.env.VITE_API_URL || 'http://localhost:5000') + '/api';
-    const streamUrl = `${BACKEND_URL.replace('/api', '')}/api/stream/${track.id}`;
+    const baseApiUrl = (import.meta.env.VITE_API_URL || 'http://localhost:5000').replace(/\/$/, '');
+    const BACKEND_URL = baseApiUrl + '/api';
+    const streamUrl = `${baseApiUrl}/api/stream/${track.id}`;
     const resp = await fetch(streamUrl, {
       headers: authProfile?.token ? { Authorization: `Bearer ${authProfile.token}` } : {},
     });

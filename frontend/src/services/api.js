@@ -1,4 +1,5 @@
-const BACKEND_URL = (import.meta.env.VITE_API_URL || 'http://localhost:5000') + '/api';
+const baseApiUrl = (import.meta.env.VITE_API_URL || 'http://localhost:5000').replace(/\/$/, '');
+const BACKEND_URL = baseApiUrl + '/api';
 
 let _getToken = null;
 

@@ -259,9 +259,9 @@ const AddNewSong = ({
       setDurationStr(`${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`);
       setIsDurationCalculated(true);
       
-      const BACKEND_URL = (import.meta.env.VITE_API_URL || 'http://localhost:5000').replace(/\/api$/, '');
-      const fullAudioUrl = result.audioUrl.startsWith('http') ? result.audioUrl : `${BACKEND_URL}${result.audioUrl}`;
-      const fullArtworkUrl = result.artworkUrl.startsWith('http') ? result.artworkUrl : `${BACKEND_URL}${result.artworkUrl}`;
+      const baseApiUrl = (import.meta.env.VITE_API_URL || 'http://localhost:5000').replace(/\/$/, '').replace(/\/api$/, '');
+      const fullAudioUrl = result.audioUrl.startsWith('http') ? result.audioUrl : `${baseApiUrl}${result.audioUrl}`;
+      const fullArtworkUrl = result.artworkUrl.startsWith('http') ? result.artworkUrl : `${baseApiUrl}${result.artworkUrl}`;
       
       setSelectedAudioUrl(fullAudioUrl);
       setArtworkUrl(fullArtworkUrl);
