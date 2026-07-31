@@ -364,7 +364,7 @@ export async function createTrackFromYouTube(url, uploadedBy) {
   const { stdout: infoJson } = await execFileAsync('yt-dlp', [
     '--dump-json', '--no-download', '--no-playlist', 
     '--js-runtimes', 'node', 
-    '--extractor-args', 'youtube:player_client=android,web',
+    '--extractor-args', 'youtube:player_client=mweb,android,web',
     url,
   ], { timeout: 30000 });
   const info = JSON.parse(infoJson);
@@ -382,7 +382,7 @@ export async function createTrackFromYouTube(url, uploadedBy) {
     '-x',
     '--audio-format', 'mp3',
     '--js-runtimes', 'node',
-    '--extractor-args', 'youtube:player_client=android,web',
+    '--extractor-args', 'youtube:player_client=mweb,android,web',
     '-o', audioPath.replace('.mp3', '') + '.%(ext)s',
     '--no-playlist',
     url,
@@ -398,7 +398,7 @@ export async function createTrackFromYouTube(url, uploadedBy) {
         '--write-thumbnail', '--skip-download',
         '--convert-thumbnails', 'jpg',
         '--js-runtimes', 'node',
-        '--extractor-args', 'youtube:player_client=android,web',
+        '--extractor-args', 'youtube:player_client=mweb,android,web',
         '-o', artworkPath.replace('.jpg', ''),
         '--no-playlist',
         url,
@@ -444,7 +444,7 @@ export async function extractYouTubeMetadata(url) {
   const { stdout: infoJson } = await execFileAsync('yt-dlp', [
     '--dump-json', '--no-download', '--no-playlist', 
     '--js-runtimes', 'node', 
-    '--extractor-args', 'youtube:player_client=android,web',
+    '--extractor-args', 'youtube:player_client=mweb,android,web',
     url,
   ], { timeout: 30000 });
   const info = JSON.parse(infoJson);
@@ -469,7 +469,7 @@ export async function extractYouTubeMetadata(url) {
     '-x',
     '--audio-format', 'mp3',
     '--js-runtimes', 'node',
-    '--extractor-args', 'youtube:player_client=android,web',
+    '--extractor-args', 'youtube:player_client=mweb,android,web',
     '-o', audioPath.replace('.mp3', '') + '.%(ext)s',
     '--no-playlist',
     url,
@@ -486,7 +486,7 @@ export async function extractYouTubeMetadata(url) {
         '--write-thumbnail', '--skip-download',
         '--convert-thumbnails', 'jpg',
         '--js-runtimes', 'node',
-        '--extractor-args', 'youtube:player_client=android,web',
+        '--extractor-args', 'youtube:player_client=mweb,android,web',
         '-o', localArtworkPath.replace('.jpg', ''),
         '--no-playlist',
         url,
