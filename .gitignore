@@ -32,7 +32,7 @@ env.yaml
 
 # Local Binaries and Uploads
 backend/bin/
-backend/uploads/
+backend/uploads/*
 # Exceptions
 !backend/uploads/.gitkeep
 !backend/uploads/artwork/
