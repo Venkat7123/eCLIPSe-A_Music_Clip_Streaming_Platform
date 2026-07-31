@@ -87,14 +87,22 @@ router.post('/', authenticateToken, requireAdmin, uploadLimiter, (req, res, next
       }
 
       const audioFile = req.files?.audio?.[0];
-      const audioPath = audioFile ? audioFile.path : (serverAudioUrl ? path.resolve(serverAudioUrl.replace(/^\//, '')) : null);
+      const audioPath = audioFile 
+        ? audioFile.path 
+        : (serverAudioUrl 
+          ? (serverAudioUrl.startsWith('http') ? serverAudioUrl : path.resolve(serverAudioUrl.replace(/^\//, ''))) 
+          : null);
 
       if (!audioPath) {
         return res.status(400).json({ error: 'Audio file is required' });
       }
 
       const artworkFile = req.files?.artwork?.[0];
-      const artworkPath = artworkFile ? artworkFile.path : (serverArtworkUrl && serverArtworkUrl.startsWith('/uploads/') ? path.resolve(serverArtworkUrl.replace(/^\//, '')) : (serverArtworkUrl || ''));
+      const artworkPath = artworkFile 
+        ? artworkFile.path 
+        : (serverArtworkUrl && serverArtworkUrl.startsWith('/uploads/') 
+          ? path.resolve(serverArtworkUrl.replace(/^\//, '')) 
+          : (serverArtworkUrl || ''));
 
       const track = await trackService.createTrack({
         title,

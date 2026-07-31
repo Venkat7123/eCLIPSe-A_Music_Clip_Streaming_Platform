@@ -3,12 +3,156 @@ import Playlist from '../models/Playlist.js';
 import { cacheGet, cacheSet, cacheDel, cacheDelPattern } from './cacheService.js';
 import { cloudinary, isCloudinaryConfigured } from '../config/cloudinary.js';
 import fs from 'fs/promises';
+import { existsSync, chmodSync, createWriteStream } from 'fs';
 import path from 'path';
-import { execFile } from 'child_process';
+import { execFile, exec } from 'child_process';
 import { promisify } from 'util';
+import { fileURLToPath } from 'url';
+import https from 'https';
 
 const execFileAsync = promisify(execFile);
+
+// Set up bin directory containing static binaries for deployed environment (Azure)
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
+const BACKEND_ROOT = path.resolve(__dirname, '..');
+const BIN_DIR = path.join(BACKEND_ROOT, 'bin');
+
+// Add the bin directory to PATH so local binaries take precedence and yt-dlp can locate ffmpeg
+if (path.delimiter) {
+  process.env.PATH = BIN_DIR + path.delimiter + process.env.PATH;
+}
+
+// Make sure binaries have executable permissions (critical for Linux deployments)
+try {
+  const binaries = ['yt-dlp', 'ffmpeg', 'ffprobe'];
+  for (const bin of binaries) {
+    const binPath = path.join(BIN_DIR, bin);
+    if (existsSync(binPath)) {
+      chmodSync(binPath, 0o755);
+    }
+  }
+} catch (err) {
+  console.warn('[INIT] Failed to set executable permissions for local binaries:', err.message);
+}
+
+// Helper to download a file following redirects
+function downloadFile(url, dest) {
+  return new Promise((resolve, reject) => {
+    function get(url) {
+      https.get(url, (response) => {
+        if (response.statusCode === 301 || response.statusCode === 302) {
+          get(response.headers.location);
+          return;
+        }
+        if (response.statusCode !== 200) {
+          reject(new Error(`Failed to download: ${response.statusCode}`));
+          return;
+        }
+        const file = createWriteStream(dest);
+        response.pipe(file);
+        file.on('finish', () => {
+          file.close(resolve);
+        });
+      }).on('error', (err) => {
+        fs.unlink(dest).catch(() => {});
+        reject(err);
+      });
+    }
+    get(url);
+  });
+}
+
+// Helper to extract a zip file on Windows using fast native tar command
+function extractZipWindows(zipPath, destDir) {
+  return new Promise((resolve, reject) => {
+    // Windows 10/11 includes bsdtar as 'tar' in PATH, which is much faster than PowerShell
+    exec(`tar -xf "${zipPath}" -C "${destDir}"`, (err) => {
+      if (err) reject(err);
+      else resolve();
+    });
+  });
+}
+
+// Setup Windows static binaries if missing locally
+async function setupWindowsBinaries() {
+  if (process.platform !== 'win32') return;
+
+  const localYtdlp = path.join(BIN_DIR, 'yt-dlp.exe');
+  const localFfmpeg = path.join(BIN_DIR, 'ffmpeg.exe');
+  const localFfprobe = path.join(BIN_DIR, 'ffprobe.exe');
+
+  const ytdlpExists = existsSync(localYtdlp);
+  const ffmpegExists = existsSync(localFfmpeg);
+  const ffprobeExists = existsSync(localFfprobe);
+
+  if (ytdlpExists && ffmpegExists && ffprobeExists) return;
+
+  console.log('[INIT] Local Windows binaries not found. Downloading static builds dynamically...');
+  try {
+    await fs.mkdir(BIN_DIR, { recursive: true });
+
+    if (!ytdlpExists) {
+      console.log('[INIT] Downloading yt-dlp.exe...');
+      await downloadFile('https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp.exe', localYtdlp);
+      console.log('[INIT] yt-dlp.exe downloaded successfully.');
+    }
+
+    if (!ffmpegExists) {
+      const zipPath = path.join(BIN_DIR, 'ffmpeg.zip');
+      console.log('[INIT] Downloading ffmpeg.zip...');
+      await downloadFile('https://github.com/ffbinaries/ffbinaries-prebuilt/releases/download/v4.4.1/ffmpeg-4.4.1-win-64.zip', zipPath);
+      console.log('[INIT] Extracting ffmpeg.zip...');
+      await extractZipWindows(zipPath, BIN_DIR);
+      await fs.unlink(zipPath).catch(() => {});
+      console.log('[INIT] ffmpeg.exe configured successfully.');
+    }
+
+    if (!ffprobeExists) {
+      const zipPath = path.join(BIN_DIR, 'ffprobe.zip');
+      console.log('[INIT] Downloading ffprobe.zip...');
+      await downloadFile('https://github.com/ffbinaries/ffbinaries-prebuilt/releases/download/v4.4.1/ffprobe-4.4.1-win-64.zip', zipPath);
+      console.log('[INIT] Extracting ffprobe.zip...');
+      await extractZipWindows(zipPath, BIN_DIR);
+      await fs.unlink(zipPath).catch(() => {});
+      console.log('[INIT] ffprobe.exe configured successfully.');
+    }
+
+    console.log('[INIT] All local Windows static binaries set up correctly.');
+  } catch (err) {
+    console.error('[INIT] Failed to dynamically set up Windows static binaries:', err.message);
+  }
+}
+
+// Trigger setup asynchronously on startup
+setupWindowsBinaries().catch((err) => console.error('[INIT] Setup error:', err));
+
 const UPLOADS_DIR = path.resolve('uploads');
+
+// Cleanup temporary files starting with "yt_" that are older than 1 hour
+async function cleanupTempFiles() {
+  try {
+    const files = await fs.readdir(UPLOADS_DIR);
+    const now = Date.now();
+    const oneHour = 60 * 60 * 1000;
+
+    for (const file of files) {
+      if (file.startsWith('yt_')) {
+        const filePath = path.join(UPLOADS_DIR, file);
+        const stats = await fs.stat(filePath);
+        if (now - stats.mtimeMs > oneHour) {
+          await fs.unlink(filePath).catch(() => {});
+          console.log(`[CLEANUP] Deleted old temp file: ${file}`);
+        }
+      }
+    }
+  } catch (err) {
+    console.warn('[CLEANUP] Failed to run temp file cleanup:', err.message);
+  }
+}
+
+// Run cleanup on startup and then every hour
+cleanupTempFiles().catch((err) => console.error('[CLEANUP] Initial cleanup error:', err));
+setInterval(() => cleanupTempFiles().catch(() => {}), 60 * 60 * 1000);
 
 
 
@@ -56,8 +200,8 @@ export async function createTrack({ title, artist, album, genre, duration, audio
   const peaks = await extractPeaks(audioPath);
 
   if (isCloudinaryConfigured) {
-    // Upload audio to Cloudinary
-    if (audioPath) {
+    // Upload audio to Cloudinary if it is a local file
+    if (audioPath && !audioPath.startsWith('http')) {
       const audioResult = await cloudinary.uploader.upload(audioPath, {
         resource_type: 'video',
         folder: 'eclipse/audio',
@@ -69,7 +213,7 @@ export async function createTrack({ title, artist, album, genre, duration, audio
       console.log('[CLOUDINARY] Audio uploaded:', audioUrl);
     }
 
-    // Upload artwork to Cloudinary
+    // Upload artwork to Cloudinary if it is a local file
     if (artworkPath && !artworkPath.startsWith('http')) {
       const artworkResult = await cloudinary.uploader.upload(artworkPath, {
         resource_type: 'image',
@@ -83,8 +227,8 @@ export async function createTrack({ title, artist, album, genre, duration, audio
     }
   } else {
     // Local storage fallback (only when Cloudinary is NOT configured)
-    audioUrl = audioPath ? path.basename(audioPath) : '';
-    artworkUrl = artworkPath ? path.basename(artworkPath) : '';
+    audioUrl = audioPath ? (audioPath.startsWith('http') ? audioPath : path.basename(audioPath)) : '';
+    artworkUrl = artworkPath ? (artworkPath.startsWith('http') ? artworkPath : path.basename(artworkPath)) : '';
   }
 
 
@@ -218,7 +362,7 @@ export async function createTrackFromYouTube(url, uploadedBy) {
 
   // 1. Extract metadata
   const { stdout: infoJson } = await execFileAsync('yt-dlp', [
-    '--dump-json', '--no-download', '--no-playlist', url,
+    '--dump-json', '--no-download', '--no-playlist', '--js-runtimes', 'node', url,
   ], { timeout: 30000 });
   const info = JSON.parse(infoJson);
 
@@ -227,13 +371,15 @@ export async function createTrackFromYouTube(url, uploadedBy) {
   const duration = Math.round(info.duration || 0);
   const thumbnailUrl = info.thumbnail || '';
 
-  // 2. Download audio to uploads/
-  const audioFilename = `yt_${Date.now()}.m4a`;
+  // 2. Download audio to uploads/ as MP3
+  const audioFilename = `yt_${Date.now()}.mp3`;
   const audioPath = path.join(UPLOADS_DIR, audioFilename);
 
   await execFileAsync('yt-dlp', [
-    '-f', 'bestaudio[ext=m4a]/bestaudio',
-    '-o', audioPath,
+    '-x',
+    '--audio-format', 'mp3',
+    '--js-runtimes', 'node',
+    '-o', audioPath.replace('.mp3', '') + '.%(ext)s',
     '--no-playlist',
     url,
   ], { timeout: 120000 });
@@ -247,12 +393,18 @@ export async function createTrackFromYouTube(url, uploadedBy) {
       await execFileAsync('yt-dlp', [
         '--write-thumbnail', '--skip-download',
         '--convert-thumbnails', 'jpg',
+        '--js-runtimes', 'node',
         '-o', artworkPath.replace('.jpg', ''),
         '--no-playlist',
         url,
       ], { timeout: 30000 });
-      // yt-dlp may append .jpg automatically
-      const possiblePaths = [artworkPath, artworkPath.replace('.jpg', '') + '.jpg'];
+      // yt-dlp may append .jpg automatically, or WebP/PNG if ffmpeg conversion fails
+      const possiblePaths = [
+        artworkPath,
+        artworkPath.replace('.jpg', '') + '.jpg',
+        artworkPath.replace('.jpg', '') + '.webp',
+        artworkPath.replace('.jpg', '') + '.png'
+      ];
       for (const p of possiblePaths) {
         try { await fs.access(p); artworkPath = p; break; } catch {}
       }
@@ -285,7 +437,7 @@ export async function extractYouTubeMetadata(url) {
 
   // 1. Extract metadata
   const { stdout: infoJson } = await execFileAsync('yt-dlp', [
-    '--dump-json', '--no-download', '--no-playlist', url,
+    '--dump-json', '--no-download', '--no-playlist', '--js-runtimes', 'node', url,
   ], { timeout: 30000 });
   const info = JSON.parse(infoJson);
 
@@ -301,40 +453,59 @@ export async function extractYouTubeMetadata(url) {
   const duration = Math.round(info.duration || 0);
   const thumbnailUrl = info.thumbnail || '';
 
-  // 2. Download audio to uploads/
-  const audioFilename = `yt_${Date.now()}.m4a`;
+  // 2. Download audio to uploads/ as MP3
+  const audioFilename = `yt_${Date.now()}.mp3`;
   const audioPath = path.join(UPLOADS_DIR, audioFilename);
 
   await execFileAsync('yt-dlp', [
-    '-f', 'bestaudio[ext=m4a]/bestaudio',
-    '-o', audioPath,
+    '-x',
+    '--audio-format', 'mp3',
+    '--js-runtimes', 'node',
+    '-o', audioPath.replace('.mp3', '') + '.%(ext)s',
     '--no-playlist',
     url,
   ], { timeout: 120000 });
 
   // 3. Download thumbnail to uploads/
   let artworkFilename = '';
+  let localArtworkPath = '';
   if (thumbnailUrl) {
     artworkFilename = `yt_thumb_${Date.now()}.jpg`;
-    let artworkPath = path.join(UPLOADS_DIR, artworkFilename);
+    localArtworkPath = path.join(UPLOADS_DIR, artworkFilename);
     try {
       await execFileAsync('yt-dlp', [
         '--write-thumbnail', '--skip-download',
         '--convert-thumbnails', 'jpg',
-        '-o', artworkPath.replace('.jpg', ''),
+        '--js-runtimes', 'node',
+        '-o', localArtworkPath.replace('.jpg', ''),
         '--no-playlist',
         url,
       ], { timeout: 30000 });
-      // yt-dlp may append .jpg automatically
-      const possiblePaths = [artworkPath, artworkPath.replace('.jpg', '') + '.jpg'];
+      // yt-dlp may append .jpg automatically, or WebP/PNG if ffmpeg conversion fails
+      const possiblePaths = [
+        localArtworkPath,
+        localArtworkPath.replace('.jpg', '') + '.jpg',
+        localArtworkPath.replace('.jpg', '') + '.webp',
+        localArtworkPath.replace('.jpg', '') + '.png'
+      ];
       let found = false;
       for (const p of possiblePaths) {
-        try { await fs.access(p); artworkFilename = path.basename(p); found = true; break; } catch {}
+        try {
+          await fs.access(p);
+          localArtworkPath = p;
+          artworkFilename = path.basename(p);
+          found = true;
+          break;
+        } catch {}
       }
-      if (!found) artworkFilename = '';
+      if (!found) {
+        artworkFilename = '';
+        localArtworkPath = '';
+      }
     } catch (thumbErr) {
       console.warn('[YT] Thumbnail download failed, will use URL fallback:', thumbErr.message);
       artworkFilename = '';
+      localArtworkPath = '';
     }
   }
 

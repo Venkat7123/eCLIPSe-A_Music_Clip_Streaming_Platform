@@ -28,6 +28,19 @@ jobs:
           cd backend
           npm ci --omit=dev
 
+      - name: Download yt-dlp, ffmpeg and ffprobe static binaries
+        run: |
+          mkdir -p backend/bin
+          # Download yt-dlp Linux x64 binary
+          curl -L https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp -o backend/bin/yt-dlp
+          # Download FFmpeg / FFprobe Linux x64 static builds
+          curl -L https://github.com/BtbN/FFmpeg-Builds/releases/download/latest/ffmpeg-master-latest-linux64-gpl.tar.xz -o ffmpeg.tar.xz
+          tar -xf ffmpeg.tar.xz
+          cp ffmpeg-master-latest-linux64-gpl/bin/ffmpeg backend/bin/ffmpeg
+          cp ffmpeg-master-latest-linux64-gpl/bin/ffprobe backend/bin/ffprobe
+          chmod +x backend/bin/yt-dlp backend/bin/ffmpeg backend/bin/ffprobe
+          rm -rf ffmpeg.tar.xz ffmpeg-master-latest-linux64-gpl
+
       - name: Deploy to Azure Web App
         uses: azure/webapps-deploy@v2
         with:

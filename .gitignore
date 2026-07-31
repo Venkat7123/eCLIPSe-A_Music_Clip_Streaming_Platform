@@ -29,3 +29,9 @@ dist-ssr/
 *.sln
 *.sw?
 env.yaml
+
+# Local Binaries and Uploads
+backend/bin/
+backend/uploads/
+# Exceptions
+!backend/uploads/.gitkeep

@@ -17,4 +17,4 @@ if (isConfigured) {
 }
 
 export { cloudinary };
-export const isCloudinaryConfigured = () => Boolean(isConfigured);
+export const isCloudinaryConfigured = Boolean(isConfigured);
