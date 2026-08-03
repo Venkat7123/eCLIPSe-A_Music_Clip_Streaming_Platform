@@ -154,7 +154,34 @@ async function cleanupTempFiles() {
 cleanupTempFiles().catch((err) => console.error('[CLEANUP] Initial cleanup error:', err));
 setInterval(() => cleanupTempFiles().catch(() => {}), 60 * 60 * 1000);
 
-
+// Helper to get cookies arguments for yt-dlp to bypass bot detection/sign-in requirements
+function getCookiesArgs() {
+  const args = [];
+  
+  // 1. Check if cookies file is explicitly configured in environment variables
+  if (process.env.YT_DLP_COOKIES_FILE) {
+    const cookiesPath = path.resolve(process.env.YT_DLP_COOKIES_FILE);
+    if (existsSync(cookiesPath)) {
+      args.push('--cookies', cookiesPath);
+      return args;
+    }
+  }
+  
+  // 2. Check if a default cookies.txt exists in backend/ directory
+  const defaultCookiesPath = path.join(BACKEND_ROOT, 'cookies.txt');
+  if (existsSync(defaultCookiesPath)) {
+    args.push('--cookies', defaultCookiesPath);
+    return args;
+  }
+  
+  // 3. Check if cookies from browser is configured in environment variables
+  if (process.env.YT_DLP_COOKIES_FROM_BROWSER) {
+    args.push('--cookies-from-browser', process.env.YT_DLP_COOKIES_FROM_BROWSER);
+    return args;
+  }
+  
+  return args;
+}
 
 export async function getAllTracks(search, genre) {
   const cacheKey = `tracks:${search || ''}:${genre || ''}`;
@@ -365,6 +392,7 @@ export async function createTrackFromYouTube(url, uploadedBy) {
     '--dump-json', '--no-download', '--no-playlist', 
     '--js-runtimes', 'node', 
     '--extractor-args', 'youtube:player_client=mweb,android,web',
+    ...getCookiesArgs(),
     url,
   ], { timeout: 30000 });
   const info = JSON.parse(infoJson);
@@ -383,6 +411,7 @@ export async function createTrackFromYouTube(url, uploadedBy) {
     '--audio-format', 'mp3',
     '--js-runtimes', 'node',
     '--extractor-args', 'youtube:player_client=mweb,android,web',
+    ...getCookiesArgs(),
     '-o', audioPath.replace('.mp3', '') + '.%(ext)s',
     '--no-playlist',
     url,
@@ -399,6 +428,7 @@ export async function createTrackFromYouTube(url, uploadedBy) {
         '--convert-thumbnails', 'jpg',
         '--js-runtimes', 'node',
         '--extractor-args', 'youtube:player_client=mweb,android,web',
+        ...getCookiesArgs(),
         '-o', artworkPath.replace('.jpg', ''),
         '--no-playlist',
         url,
@@ -445,6 +475,7 @@ export async function extractYouTubeMetadata(url) {
     '--dump-json', '--no-download', '--no-playlist', 
     '--js-runtimes', 'node', 
     '--extractor-args', 'youtube:player_client=mweb,android,web',
+    ...getCookiesArgs(),
     url,
   ], { timeout: 30000 });
   const info = JSON.parse(infoJson);
@@ -470,6 +501,7 @@ export async function extractYouTubeMetadata(url) {
     '--audio-format', 'mp3',
     '--js-runtimes', 'node',
     '--extractor-args', 'youtube:player_client=mweb,android,web',
+    ...getCookiesArgs(),
     '-o', audioPath.replace('.mp3', '') + '.%(ext)s',
     '--no-playlist',
     url,
@@ -487,6 +519,7 @@ export async function extractYouTubeMetadata(url) {
         '--convert-thumbnails', 'jpg',
         '--js-runtimes', 'node',
         '--extractor-args', 'youtube:player_client=mweb,android,web',
+        ...getCookiesArgs(),
         '-o', localArtworkPath.replace('.jpg', ''),
         '--no-playlist',
         url,
